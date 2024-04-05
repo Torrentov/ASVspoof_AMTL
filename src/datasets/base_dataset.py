@@ -3,6 +3,7 @@ import random
 from typing import List
 
 import torch
+import torchaudio
 from torch.utils.data import Dataset
 
 logger = logging.getLogger(__name__)
@@ -13,6 +14,7 @@ class BaseDataset(Dataset):
         self._assert_index_is_valid(index)
 
         index = self._shuffle_and_limit_index(index, limit)
+        index = self._sort_index(index)
         self._index: List[dict] = index
 
         self.instance_transforms = instance_transforms
@@ -20,17 +22,27 @@ class BaseDataset(Dataset):
     def __getitem__(self, ind):
         data_dict = self._index[ind]
         data_path = data_dict["path"]
-        data_object = self.load_object(data_path)
-        data_label = data_dict["label"]
+        data_object, sr = self.load_object(data_path)
         data_object = self.process_object(data_object)
-        return {"data_object": data_object, "labels": data_label}
+        gt_label = data_dict.get("gt_label", -1)
+        speaker_id = data_dict.get("speaker_id", "")
+        system_id = data_dict.get("system_id", "")
+        return {
+            "audio": data_object,
+            "duration": data_object.size(1) / sr,
+            "audio_path": data_path,
+            "gt_label": gt_label,
+            "speaker_id": speaker_id,
+            "system_id": system_id,
+        }
 
     def __len__(self):
         return len(self._index)
 
     def load_object(self, path):
-        data_object = torch.load(path)
-        return data_object
+        audio_tensor, sr = torchaudio.load(path)
+        audio_tensor = audio_tensor[0:1, :]  # remove all channels but the first
+        return audio_tensor, sr
 
     def process_object(self, data_object):
         if self.instance_transforms is not None:
@@ -53,7 +65,7 @@ class BaseDataset(Dataset):
 
     @staticmethod
     def _sort_index(index):
-        return sorted(index, key=lambda x: x["KEY_FOR_SORTING"])
+        return sorted(index, key=lambda x: x["audio_len"])
 
     @staticmethod
     def _shuffle_and_limit_index(index, limit):

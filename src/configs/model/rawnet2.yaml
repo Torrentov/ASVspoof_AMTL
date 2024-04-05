@@ -1,0 +1,15 @@
+_target_: src.model.RawNet2
+sinc_out_channels: 20
+sinc_kernel_size: 1024
+resblocks_channels: [
+        [20, 20],
+        [20, 20],
+        [20, 128],
+        [128, 128],
+        [128, 128],
+        [128, 128]
+      ]
+gru_size: 1024
+gru_num_layers: 3
+fc_size: 1024
+num_classes: 2
