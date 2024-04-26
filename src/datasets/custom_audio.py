@@ -12,12 +12,11 @@ from src.utils.io_utils import ROOT_PATH, read_json, write_json
 class CustomAudioDataset(BaseDataset):
     def __init__(self, data, *args, **kwargs):
         index = data
-        for entry in data:
+        for entry in tqdm(data):
             assert "path" in entry
             assert Path(entry["path"]).exists(), f"Path {entry['path']} doesn't exist"
-            entry["path"] = Path(entry["path"]).absolute().resolve()
-            t_info = torchaudio.info(Path(entry["path"]))
-            entry["path"] = str(entry["path"])
-            entry["audio_len"] = t_info.num_frames / t_info.sample_rate
+            entry["path"] = str(Path(entry["path"]).absolute().resolve())
+            # t_info = torchaudio.info(entry["path"], format='flac')
+            # entry["audio_len"] = t_info.num_frames / t_info.sample_rate
 
         super().__init__(index, *args, **kwargs)

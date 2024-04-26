@@ -11,7 +11,7 @@ class EERMetric(BaseMetric):
 
     def __call__(self, all_probs, all_targets, **kwargs) -> (float, float):
         eer, thr = compute_eer(
-            bonafide_scores=all_probs[all_targets == 1],
-            other_scores=all_probs[all_targets == 0],
-        )  # нашел в чате как пример правильного использования
+            bonafide_scores=all_probs[all_targets == 0],
+            other_scores=all_probs[all_targets == 1],
+        )
         return eer, thr

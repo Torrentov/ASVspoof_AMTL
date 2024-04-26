@@ -1,4 +1,4 @@
-project_name: "pytorch_template"
+project_name: "asvspoof_amtl"
 entity: null
 run_name: "testing"
 mode: "online"

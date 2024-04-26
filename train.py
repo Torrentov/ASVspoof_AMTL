@@ -1,5 +1,6 @@
 import random
 import warnings
+import os
 
 import hydra
 import numpy as np
@@ -13,17 +14,20 @@ from src.utils.init_utils import setup_saving_and_logging
 warnings.filterwarnings("ignore", category=UserWarning)
 
 
-def set_random_seed(seed):
-    # fix random seeds for reproducibility
-    torch.manual_seed(seed)
-    torch.backends.cudnn.deterministic = True
-    # benchmark=True works faster but reproducibility decreases
-    torch.backends.cudnn.benchmark = False
-    np.random.seed(seed)
-    random.seed(seed)
+def set_random_seed(random_seed, cudnn_deterministic=True):
+    # initialization
+    torch.manual_seed(random_seed)
+    random.seed(random_seed)
+    np.random.seed(random_seed)
+    os.environ['PYTHONHASHSEED'] = str(random_seed)
+
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(random_seed)
+        torch.backends.cudnn.deterministic = cudnn_deterministic
+        torch.backends.cudnn.benchmark = False
 
 
-@hydra.main(version_base=None, config_path="src/configs", config_name="baseline")
+@hydra.main(version_base=None, config_path="src/configs", config_name="resnet_initial_params")
 def main(config):
     set_random_seed(config.trainer.seed)
 
@@ -42,13 +46,20 @@ def main(config):
     logger.info(model)
 
     # get function handles of loss and metrics
-    loss_function = instantiate(config.loss_function).to(device)
+    loss = instantiate(config.loss).to(device)
     metrics = instantiate(config.metrics)
 
     # build optimizer, learning rate scheduler
-    trainable_params = filter(lambda p: p.requires_grad, model.parameters())
-    optimizer = instantiate(config.optimizer, params=trainable_params)
-    lr_scheduler = instantiate(config.lr_scheduler, optimizer=optimizer)
+    # trainable_params = filter(lambda p: p.requires_grad, model.parameters())
+    # audio_optimizer = instantiate(config.audio_optimizer, params=[{'params': model.audio_model.parameters()},
+    #                                                        {'params': model.reconstruction_autoencoder.parameters()}])
+    audio_optimizer = torch.optim.Adam(params=[{'params': model.audio_model.parameters()},
+                                               {'params': model.reconstruction_autoencoder.parameters()}], lr=0.0003, betas=(0.9, 0.999), eps=1e-8, weight_decay=0.0005)
+
+    ca_optimizer = instantiate(config.ca_optimizer, params=model.conversion_autoencoder.parameters())
+    sc_optimizer = instantiate(config.sc_optimizer, params=model.speaker_classifier.parameters())
+
+    # lr_scheduler = instantiate(config.lr_scheduler, optimizer=optimizer)
 
     # epoch_len = number of iterations for iteration-based training
     # epoch_len = None or len(dataloader) for epoch-based training
@@ -56,10 +67,12 @@ def main(config):
 
     trainer = Trainer(
         model=model,
-        criterion=loss_function,
+        loss=loss,
         metrics=metrics,
-        optimizer=optimizer,
-        lr_scheduler=lr_scheduler,
+        audio_optimizer=audio_optimizer,
+        ca_optimizer=ca_optimizer,
+        sc_optimizer=sc_optimizer,
+        # lr_scheduler=lr_scheduler,
         config=config,
         device=device,
         dataloaders=dataloaders,
@@ -67,6 +80,7 @@ def main(config):
         logger=logger,
         batch_transforms=batch_transforms,
         skip_oom=config.trainer.get("skip_oom", True),
+        use_mtl=config.trainer.get("use_mtl", True),
     )
 
     trainer.train()

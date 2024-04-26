@@ -1,0 +1,9 @@
+_target_: src.model.MultiTaskResNet
+resnet_num_nodes: 3
+resnet_enc_dim: 256
+resnet_resnet_type: '34'
+rec_ae_enc_dim: 256
+conv_ae_num_nodes: 3
+conv_ae_enc_dim: 256
+sc_enc_dim: 256
+sc_nclasses: 20

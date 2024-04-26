@@ -10,11 +10,11 @@ logger = logging.getLogger(__name__)
 
 
 class BaseDataset(Dataset):
-    def __init__(self, index, limit=None, instance_transforms=None):
+    def __init__(self, index, limit=None, shuffle=True, instance_transforms=None):
         self._assert_index_is_valid(index)
 
-        index = self._shuffle_and_limit_index(index, limit)
-        index = self._sort_index(index)
+        index = self._shuffle_and_limit_index(index, limit, shuffle)
+        # index = self._sort_index(index)
         self._index: List[dict] = index
 
         self.instance_transforms = instance_transforms
@@ -68,9 +68,10 @@ class BaseDataset(Dataset):
         return sorted(index, key=lambda x: x["audio_len"])
 
     @staticmethod
-    def _shuffle_and_limit_index(index, limit):
-        random.seed(42)
-        random.shuffle(index)
+    def _shuffle_and_limit_index(index, limit, shuffle):
+        if shuffle:
+            random.seed(42)
+            random.shuffle(index)
 
         if limit is not None:
             index = index[:limit]

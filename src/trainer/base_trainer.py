@@ -9,6 +9,8 @@ from src.metrics.tracker import MetricTracker
 from src.utils.data_utils import inf_loop
 from src.utils.io_utils import ROOT_PATH
 
+from src.metrics.utils import compute_eer
+
 
 class BaseTrainer:
     """
@@ -18,10 +20,12 @@ class BaseTrainer:
     def __init__(
         self,
         model,
-        criterion,
+        loss,
         metrics,
-        optimizer,
-        lr_scheduler,
+        audio_optimizer,
+        ca_optimizer,
+        sc_optimizer,
+        # lr_scheduler,
         config,
         device,
         dataloaders,
@@ -29,8 +33,11 @@ class BaseTrainer:
         epoch_len=None,
         skip_oom=True,
         batch_transforms=None,
+        use_mtl=True
     ):
         self.is_train = True
+
+        self.use_mtl = use_mtl
 
         self.config = config
         cfg_trainer = config.trainer
@@ -42,9 +49,11 @@ class BaseTrainer:
         self.log_step = config.trainer.get("log_step", 50)
 
         self.model = model
-        self.criterion = criterion
-        self.optimizer = optimizer
-        self.lr_scheduler = lr_scheduler
+        self.loss = loss
+        self.audio_optimizer = audio_optimizer
+        self.ca_optimizer = ca_optimizer
+        self.sc_optimizer = sc_optimizer
+        # self.lr_scheduler = lr_scheduler
         self.batch_transforms = batch_transforms
 
         # define dataloaders
@@ -58,7 +67,7 @@ class BaseTrainer:
             self.epoch_len = epoch_len
 
         self.evaluation_dataloaders = {
-            k: v for k, v in dataloaders.items() if k != "train"
+            k: v for k, v in dataloaders.items() if k == "dev"
         }
 
         # define epochs
@@ -210,6 +219,7 @@ class BaseTrainer:
         transform_type = "train" if self.is_train else "inference"
         transforms = self.batch_transforms.get(transform_type)
         if transforms is not None:
+            print(transforms.keys())
             for transform_name in transforms.keys():
                 batch[transform_name] = transforms[transform_name](
                     batch[transform_name]
@@ -249,6 +259,25 @@ class BaseTrainer:
             return
         for metric_name in metric_tracker.keys():
             self.writer.add_scalar(f"{metric_name}", metric_tracker.avg(metric_name))
+    
+    def _log_eer(self, all_probs, all_targets):
+        eer, thr = compute_eer(
+            all_probs[all_targets == 0],
+            all_probs[all_targets == 1]
+        )
+        self.writer.add_scalar("eer", eer)
+        self.writer.add_scalar("eer_thr", thr)
+        return eer
+        # other_eer, other_thr = compute_eer(
+        #     -all_probs[all_targets == 0],
+        #     -all_probs[all_targets == 1]
+        # )
+        # if eer < other_eer:
+            # self.writer.add_scalar("eer", eer)
+            # self.writer.add_scalar("eer_thr", thr)
+        # else:
+        #     self.writer.add_scalar("eer", other_eer)
+        #     self.writer.add_scalar("eer_thr", other_thr)
 
     def _save_checkpoint(self, epoch, save_best=False, only_best=False):
         """
@@ -262,8 +291,11 @@ class BaseTrainer:
             "arch": arch,
             "epoch": epoch,
             "state_dict": self.model.state_dict(),
-            "optimizer": self.optimizer.state_dict(),
-            "lr_scheduler": self.lr_scheduler.state_dict(),
+            "loss": self.loss.state_dict(),
+            "audio_optimizer": self.audio_optimizer.state_dict(),
+            "ca_optimizer": self.ca_optimizer.state_dict(),
+            "sc_optimizer": self.sc_optimizer.state_dict(),
+            # "lr_scheduler": self.lr_scheduler.state_dict(),
             "monitor_best": self.mnt_best,
             "config": self.config,
         }
@@ -296,10 +328,20 @@ class BaseTrainer:
             )
         self.model.load_state_dict(checkpoint["state_dict"])
 
+        # load loss params from checkpoint.
+        if checkpoint["config"]["loss"] != self.config["loss"]:
+            self.logger.warning(
+                "Warning: Loss configuration given in the config file is different from that "
+                "of the checkpoint. This may yield an exception when state_dict is loaded."
+            )
+        self.loss.load_state_dict(checkpoint["loss"])
+
         # load optimizer state from checkpoint only when optimizer type is not changed.
         if (
-            checkpoint["config"]["optimizer"] != self.config["optimizer"]
-            or checkpoint["config"]["lr_scheduler"] != self.config["lr_scheduler"]
+            checkpoint["config"]["audio_optimizer"] != self.config["audio_optimizer"]
+            or checkpoint["config"]["ca_optimizer"] != self.config["ca_optimizer"]
+            or checkpoint["config"]["sc_optimizer"] != self.config["sc_optimizer"]
+            # or checkpoint["config"]["lr_scheduler"] != self.config["lr_scheduler"]
         ):
             self.logger.warning(
                 "Warning: Optimizer or lr_scheduler given in the config file is different "
@@ -307,8 +349,10 @@ class BaseTrainer:
                 "are not resumed."
             )
         else:
-            self.optimizer.load_state_dict(checkpoint["optimizer"])
-            self.lr_scheduler.load_state_dict(checkpoint["lr_scheduler"])
+            self.audio_optimizer.load_state_dict(checkpoint["audio_optimizer"])
+            self.ca_optimizer.load_state_dict(checkpoint["ca_optimizer"])
+            self.sc_optimizer.load_state_dict(checkpoint["sc_optimizer"])
+            # self.lr_scheduler.load_state_dict(checkpoint["lr_scheduler"])
 
         self.logger.info(
             "Checkpoint loaded. Resume training from epoch {}".format(self.start_epoch)

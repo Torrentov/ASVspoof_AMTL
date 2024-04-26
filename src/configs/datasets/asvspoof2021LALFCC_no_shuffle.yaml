@@ -1,0 +1,20 @@
+train:
+  _target_: src.datasets.ASVSpoof2021LALFCCDataset
+  part: "train"
+  audio_dir: "data/ASVspoof2021LA"
+  shuffle: False
+dev:
+  _target_: src.datasets.ASVSpoof2021LALFCCDataset
+  part: "dev"
+  audio_dir: "data/ASVspoof2021LA"
+  shuffle: False
+eval:
+  _target_: src.datasets.ASVSpoof2021LALFCCDataset
+  part: "eval"
+  audio_dir: "data/ASVspoof2021LA"
+  shuffle: False
+eval_2019:
+  _target_: src.datasets.ASVSpoof2021LALFCCDataset
+  part: "eval_2019"
+  audio_dir: "data/ASVspoof2021LA"
+  shuffle: False

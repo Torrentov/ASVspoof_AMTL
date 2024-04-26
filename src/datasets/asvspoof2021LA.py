@@ -10,7 +10,7 @@ from src.utils.io_utils import ROOT_PATH, read_json, write_json
 
 
 class ASVSpoof2021LADataset(CustomAudioDataset):
-    def __init__(self, audio_dir, part, *args, **kwargs):
+    def __init__(self, audio_dir, part, limit=None, *args, **kwargs):
         audio_dir = Path(audio_dir)
         if str(audio_dir)[0] != "/" and str(audio_dir)[0] != "\\":
             audio_dir = ROOT_PATH / audio_dir
@@ -37,14 +37,21 @@ class ASVSpoof2021LADataset(CustomAudioDataset):
             raise ValueError("Unknown part")
         data = []
         with open(part_protocol, "r") as f:
+            counter = 0
             for line in tqdm(f):
                 entry = {}
                 line = line.strip("\n")
-                speaker_id, audio_file_name, _, system_id, label = line.split()
+                if part != "eval":
+                    speaker_id, audio_file_name, _, system_id, label = line.split()
+                else:
+                    speaker_id, audio_file_name, _, _, system_id, label, _, _ = line.split()
                 entry["speaker_id"] = speaker_id
                 entry["system_id"] = system_id
-                entry["gt_label"] = int(label == "bonafide")
+                entry["gt_label"] = int(label == "spoof")
                 entry["path"] = str(part_dir / (audio_file_name + ".flac"))
                 if len(entry) > 0:
                     data.append(entry)
+                    counter += 1
+                    if limit is not None and counter >= limit:
+                        break
         super().__init__(data, *args, **kwargs)

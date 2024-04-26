@@ -2,9 +2,9 @@ train:
   _target_: src.datasets.ASVSpoof2021LADataset
   part: "train"
   audio_dir: "data/ASVspoof2021LA"
-  limit: 10
+  limit: 320
 val:
   _target_: src.datasets.ASVSpoof2021LADataset
   part: "eval"
   audio_dir: "data/ASVspoof2021LA"
-  limit: 10
+  limit: 320

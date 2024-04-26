@@ -1,0 +1,16 @@
+train:
+  _target_: src.datasets.ASVSpoof2021LALFCCDataset
+  part: "train"
+  audio_dir: "data/ASVspoof2021LA"
+  limit: 320
+dev:
+  _target_: src.datasets.ASVSpoof2021LALFCCDataset
+  part: "dev"
+  audio_dir: "data/ASVspoof2021LA"
+  limit: 320
+eval:
+  _target_: src.datasets.ASVSpoof2021LALFCCDataset
+  part: "eval"
+  audio_dir: "data/ASVspoof2021LA"
+  limit: 320
+  shuffle: False
