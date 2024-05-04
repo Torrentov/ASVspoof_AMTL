@@ -3,8 +3,9 @@ train:
   part: "train"
   audio_dir: "data/ASVspoof2021LA"
   limit: 320
-val:
+dev:
   _target_: src.datasets.ASVSpoof2021LADataset
-  part: "eval"
+  part: "dev"
   audio_dir: "data/ASVspoof2021LA"
   limit: 320
+  shuffle: False

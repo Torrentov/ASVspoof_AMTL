@@ -9,6 +9,8 @@ from src.metrics.tracker import MetricTracker
 from src.utils.data_utils import inf_loop
 from src.utils.io_utils import ROOT_PATH
 
+from src.utils.spectrogram import Spectrogram, InverseSpectrogram
+
 from src.metrics.utils import compute_eer
 
 
@@ -35,6 +37,9 @@ class BaseTrainer:
         batch_transforms=None,
         use_mtl=True
     ):
+        self.spectrogram = Spectrogram().to(device)
+        self.inverse_spectrogram = InverseSpectrogram().to(device)
+
         self.is_train = True
 
         self.use_mtl = use_mtl
@@ -260,6 +265,10 @@ class BaseTrainer:
         for metric_name in metric_tracker.keys():
             self.writer.add_scalar(f"{metric_name}", metric_tracker.avg(metric_name))
     
+    def _log_eer_tdcf(self, eer, min_tdcf):
+        self.writer.add_scalar("eer", eer)
+        self.writer.add_scalar("min_tDCF", min_tdcf)
+    
     def _log_eer(self, all_probs, all_targets):
         eer, thr = compute_eer(
             all_probs[all_targets == 0],
@@ -268,16 +277,6 @@ class BaseTrainer:
         self.writer.add_scalar("eer", eer)
         self.writer.add_scalar("eer_thr", thr)
         return eer
-        # other_eer, other_thr = compute_eer(
-        #     -all_probs[all_targets == 0],
-        #     -all_probs[all_targets == 1]
-        # )
-        # if eer < other_eer:
-            # self.writer.add_scalar("eer", eer)
-            # self.writer.add_scalar("eer_thr", thr)
-        # else:
-        #     self.writer.add_scalar("eer", other_eer)
-        #     self.writer.add_scalar("eer_thr", other_thr)
 
     def _save_checkpoint(self, epoch, save_best=False, only_best=False):
         """

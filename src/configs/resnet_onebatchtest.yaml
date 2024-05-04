@@ -6,13 +6,18 @@ defaults:
   - dataloader: example
   - transforms: example_no_transforms
   - _self_
-# audio_optimizer:
-#   _target_: torch.optim.Adam
-#   lr: 0.0003
-#   betas: [0.9, 0.999]
-#   eps: 0.00000001
-#   weight_decay: 0.0005
-#   params: ${optimizer_params}
+audio_optimizer:
+  _target_: torch.optim.Adam
+audio_optimizer_hparams:
+  lr: 0.0003
+  betas: [0.9, 0.999]
+  eps: 0.00000001
+  weight_decay: 0.0005
+ra_optimizer_hparams:
+  lr: 0.0003
+  betas: [0.9, 0.999]
+  eps: 0.00000001
+  weight_decay: 0.0005
 ca_optimizer:
   _target_: torch.optim.Adam
   lr: 0.0003
@@ -29,6 +34,8 @@ adjust_lr:
   lr: 0.0001
   lr_decay: 0.0001
   interval: 10
+  adjust_audio_optimizer: True
+  use_adjust_lr: True
 loss:
   _target_: src.loss.MultiTaskLoss
   lr: 0.0003

@@ -114,4 +114,7 @@ __MACOSX/
 
 .DS_Store
 
-2021/
+tmp/
+./baseline/eval_package/keys
+
+bfg-1.14.0.jar

@@ -1,0 +1,13 @@
+_target_: src.model.MultiTaskSpectrogramRawNet
+nb_samp: 64600
+first_conv: 1024   # no. of filter coefficients 
+in_channels: 1
+filts: [20, [20, 20], [20, 128], [128, 128]] # no. of filters channel in residual blocks
+blocks: [2, 4]
+nb_fc_node: 1024
+gru_node: 1024
+nb_gru_layer: 3
+nb_classes: 2
+enc_dim: 256
+conv_ae_num_nodes: 3
+sc_nclasses: 20
