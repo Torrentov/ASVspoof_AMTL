@@ -160,7 +160,7 @@ class Trainer(BaseTrainer):
         for loss_name in self.config.writer.loss_names:
             metrics.update(loss_name, batch[loss_name].item())
 
-        for met in self.metrics:
+        for met in metric_funcs:
             metrics.update(met.name, met(**batch))
         return batch
     
