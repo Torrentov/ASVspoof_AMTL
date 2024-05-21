@@ -1,0 +1,59 @@
+defaults:
+  - model: rawnet
+  - writer: rawnet_high_params_opt_rawnet
+  - metrics: empty
+  - datasets: asvspoof2021LA
+  - dataloader: rawnet
+  - transforms: example_no_transforms
+  - _self_
+audio_optimizer:
+  _target_: torch.optim.Adam
+audio_optimizer_hparams:
+  lr: 0.0001
+  amsgrad: True
+  weight_decay: 0.0001
+ra_optimizer_hparams:
+  lr: 0.0001
+  amsgrad: True
+  weight_decay: 0.0001
+ca_optimizer:
+  _target_: torch.optim.Adam
+  lr: 0.0001
+  amsgrad: True
+  weight_decay: 0.0001
+sc_optimizer:
+  _target_: torch.optim.Adam
+  lr: 0.0001
+  amsgrad: True
+  weight_decay: 0.0001
+adjust_lr:
+  lr: 0.0003
+  lr_decay: 0.5
+  interval: 10
+  adjust_audio_optimizer: False
+  use_adjust_lr: False
+loss:
+  _target_: src.loss.MultiTaskWavLoss
+  lr: 0.0001
+  feat_dim: 256
+  r_real: 0.9
+  r_fake: 0.2
+  alpha: 20
+  lambda_m: 1.0
+  lambda_r: 1.0
+  lambda_c: 1.0
+trainer:
+  log_step: 50
+  n_epochs: 100
+  device_tensors: ["audio", "gt_label", "speaker_id", "system_id"] # which tensors should be on device (ex. GPU)
+  resume_from: null # null or path to the checkpoint dir with *.pth and config.yaml
+  device: auto # device name or "auto"
+  override: True # if True, will override the previous run with the same name
+  monitor: "min dev_min_tDCF" # "off" or "max/min metric_name", i.e. our goal is to maximize/minimize metric
+  save_period: 10 # checkpoint each save_period epochs in addition to the best epoch
+  early_stop: 100 # epochs for early stopping
+  save_dir: "saved"
+  seed: 1234
+test:
+  checkpoint_path: "saved/RawNet_high_params_opt_rawnet/"
+  checkpoint_name: "model_best.pth"

@@ -8,6 +8,7 @@ import numpy as np
 import torch
 from hydra.utils import instantiate
 from tqdm.auto import tqdm
+import torch.nn.functional as F
 
 from src.trainer import Trainer
 from src.utils.data_utils import get_dataloaders
@@ -55,7 +56,10 @@ def generate_score_file(model, loss, dataloader, score_file_name, config):
                 batch = transform_batch(batch)
 
                 feats, audio_outputs = model.audio_model(batch["audio"])
-                _, batch["score"] = loss.audio_loss(feats, batch["gt_label"])
+                if loss is None:
+                    batch["score"] = F.softmax(audio_outputs)[:, 0]
+                else:
+                    _, batch["score"] = loss.audio_loss(feats, batch["gt_label"])
 
                 for i in range(len(batch["score"])):
                     system_id = str(batch["system_id"][i].item())
@@ -72,6 +76,8 @@ def test_custom_scores(cm_score_file_name, output_file):
 @hydra.main(version_base=None, config_path="src/configs", config_name="resnet_initial_params")
 def main(config):
     global batch_transforms, device
+
+    print(config_name)
 
     if config.trainer.device == "auto":
         device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -103,6 +109,11 @@ def main(config):
         loss.load_state_dict(checkpoint["loss"])
     else:
         raise ValueError("Invalid checkpoint structure")
+    # checkpoint_path = "saved/CheckpointSoftmax/"
+    # checkpoint_name = "model_best.pth"
+    # checkpoint = torch.load(checkpoint_path + checkpoint_name, device)
+    # model.audio_model.load_state_dict(checkpoint["state_dict"])
+    # loss = None
 
     cm_score_file_name = checkpoint_path + "score_2019_" + checkpoint_name.replace('.pth', '.txt')
     asv_score_file_name = "data/ASVspoof2021LA/ASVspoof2019_LA_asv_scores/ASVspoof2019.LA.asv.eval.gi.trl.scores.txt"

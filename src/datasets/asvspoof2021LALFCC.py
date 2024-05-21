@@ -126,7 +126,10 @@ class ASVSpoof2021LALFCCDataset(CustomAudioDataset):
     def process_object(self, data_object):
         object_len = data_object.shape[1]
         if object_len > self.feat_len:
-            startp = np.random.randint(object_len - self.feat_len)
+            if self.part == "train":
+                startp = np.random.randint(object_len - self.feat_len)
+            else:
+                startp = 0
             data_object = data_object[:, startp:startp + self.feat_len]
         if object_len < self.feat_len:
             if self.padding == 'zero':

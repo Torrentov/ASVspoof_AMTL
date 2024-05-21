@@ -23,7 +23,16 @@ def collate_fn(dataset_items: List[dict]):
     result_batch["gt_label"] = []
 
     for elem in dataset_items:
-        result_batch["audio"].append(elem["audio"])
+        if elem["audio"].shape != torch.Size([1, 60, 750]):
+            wave_current_length = elem['audio'].shape[1]
+            if wave_current_length >= 64600:
+                wave_padded = elem['audio'][:, :64600]
+            else:
+                wave_repeats = ceil(64600 / wave_current_length)
+                wave_padded = torch.tile(elem['audio'], (1, wave_repeats))[:, :64600]
+            result_batch["audio"].append(wave_padded)
+        else:
+            result_batch["audio"].append(elem["audio"])
         result_batch["audio_path"].append(elem["audio_path"])
         result_batch['speaker_id'].append(elem['speaker_id'])
         result_batch['audio_file_name'].append(elem['audio_file_name'])

@@ -241,29 +241,6 @@ class Reconstruction_autoencoder(nn.Module):
         return z
 
 
-class compress_Block(nn.Module):
-    expansion = 1
-    def __init__(self, in_planes, planes, stride, *args, **kwargs):
-        super(compress_Block, self).__init__()
-        self.bn1 = nn.BatchNorm2d(in_planes)
-        self.conv1 = nn.Conv2d(in_planes, planes, kernel_size=3, stride=stride, padding=1, bias=False)
-        self.bn2 = nn.BatchNorm2d(planes)
-        self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, stride=1, padding=1, bias=False)
-
-        if stride != 1 or in_planes != self.expansion * planes:
-            self.shortcut = nn.Sequential(
-                nn.Conv2d(in_planes, self.expansion * planes, kernel_size=1, stride=stride, bias=False))
-
-    def forward(self, x):
-        out = F.relu(self.bn1(x))
-        shortcut = self.shortcut(out) if hasattr(self, 'shortcut') else x
-        out = self.conv1(out)
-        out = self.conv2(F.relu(self.bn2(out)))
-        out += shortcut
-        return out
-
-
-
 class compress_block(nn.Module):
     '''Pre-activation version of the BasicBlock.'''
     expansion = 1
@@ -372,20 +349,35 @@ class Conversion_autoencoder(nn.Module):
 
         return nn.Sequential(*layers)
     def forward(self, x):
+        print(x.shape)
         x = self.conv1(x)
+        print(x.shape)
         x_1 = self.activation(self.bn1(x))
+        print(x_1.shape)
         x_2 = self.layer1(x_1)
+        print(x_2.shape)
         x_3 = self.layer2(x_2)
+        print(x_3.shape)
         x_4 = self.layer3(x_3)
+        print(x_4.shape)
         x_5 = self.layer4(x_4)
+        print(x_5.shape)
         y_1 = torch.cat([x_5,x_4],dim=1)
+        print(y_1.shape)
         y_2 = self.layer1_i(y_1)
+        print(y_2.shape)
         y_2 = torch.cat([y_2,x_3],dim=1)
+        print(y_2.shape)
         y_3 = self.layer2_i(y_2)
+        print(y_3.shape)
         y_3 = torch.cat([y_3,x_2],dim=1)
+        print(y_3.shape)
         y_4 = self.layer3_i(y_3)
+        print(y_4.shape)
         y_5 = torch.cat([y_4,x_1],dim=1)
+        print(y_5.shape)
         result = self.layer4_i(y_5)
+        print(result.shape)
         return result
 
 

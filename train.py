@@ -27,7 +27,7 @@ def set_random_seed(random_seed, cudnn_deterministic=True):
         torch.backends.cudnn.benchmark = False
 
 
-@hydra.main(version_base=None, config_path="src/configs", config_name="resnet_initial_params")
+@hydra.main(version_base=None, config_path="src/configs", config_name="rawnet_readme_params_long")
 def main(config):
     set_random_seed(config.trainer.seed)
 
@@ -42,7 +42,7 @@ def main(config):
     dataloaders, batch_transforms = get_dataloaders(config)
 
     # build model architecture, then print to console
-    model = instantiate(config.model).to(device)
+    model = instantiate(config.model, device=device).to(device)
     logger.info(model)
 
     # get function handles of loss and metrics
@@ -53,8 +53,12 @@ def main(config):
     # trainable_params = filter(lambda p: p.requires_grad, model.parameters())
     # audio_optimizer = instantiate(config.audio_optimizer, params=[{'params': model.audio_model.parameters()},
     #                                                        {'params': model.reconstruction_autoencoder.parameters()}])
-    audio_optimizer = torch.optim.Adam(params=[{'params': model.audio_model.parameters()},
-                                               {'params': model.reconstruction_autoencoder.parameters()}], lr=0.0003, betas=(0.9, 0.999), eps=1e-8, weight_decay=0.0005)
+
+    # audio_optimizer = torch.optim.Adam(params=[{'params': model.audio_model.parameters()},
+                                            #    {'params': model.reconstruction_autoencoder.parameters()}], lr=0.0001, weight_decay=0.0001)
+
+    audio_optimizer = instantiate(config.audio_optimizer, params=[{'params': model.audio_model.parameters(), 'name': 'audio_model', **config.audio_optimizer_hparams},
+                                               {'params': model.reconstruction_autoencoder.parameters(), 'name': 'reconstruction_autoencoder', **config.ra_optimizer_hparams}], _convert_="object")
 
     ca_optimizer = instantiate(config.ca_optimizer, params=model.conversion_autoencoder.parameters())
     sc_optimizer = instantiate(config.sc_optimizer, params=model.speaker_classifier.parameters())

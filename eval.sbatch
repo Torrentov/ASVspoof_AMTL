@@ -9,5 +9,5 @@
 #SBATCH --mail-user=asbekyan@edu.hse.ru    # Укажи�~Bе ва�~H email дл�~O о�~Bп�~@авки �~Cведомлений
 #SBATCH --mail-type=END,FAIL               # Соб�~K�~Bи�~O, �~B�~@еб�~C�~N�~Iие �~Cведомлени�~O
 
-python /home/asbekyan/ASVspoof_AMTL/test.py                            # Выполнение расчёта
+python /home/asbekyan/ASVspoof_AMTL/test.py --config-name rawnet_stftloss_readme_params                            # Выполнение расчёта
 #srun {options} {command}            # Выполнение MPI расчёта

@@ -6,6 +6,7 @@ dev:
   _target_: src.datasets.ASVSpoof2021LALFCCDataset
   part: "dev"
   audio_dir: "data/ASVspoof2021LA"
+  shuffle: False
 eval:
   _target_: src.datasets.ASVSpoof2021LALFCCDataset
   part: "eval"

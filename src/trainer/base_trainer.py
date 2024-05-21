@@ -9,6 +9,8 @@ from src.metrics.tracker import MetricTracker
 from src.utils.data_utils import inf_loop
 from src.utils.io_utils import ROOT_PATH
 
+from src.utils.spectrogram import Spectrogram, InverseSpectrogram
+
 from src.metrics.utils import compute_eer
 
 
@@ -35,6 +37,9 @@ class BaseTrainer:
         batch_transforms=None,
         use_mtl=True
     ):
+        self.spectrogram = Spectrogram().to(device)
+        self.inverse_spectrogram = InverseSpectrogram().to(device)
+
         self.is_train = True
 
         self.use_mtl = use_mtl
@@ -102,12 +107,12 @@ class BaseTrainer:
         self.train_metrics = MetricTracker(
             *self.config.writer.loss_names,
             "grad_norm",
-            *[m.name for m in self.metrics],
+            *[m.name for m in self.metrics["train"]],
             writer=self.writer,
         )
         self.evaluation_metrics = MetricTracker(
             *self.config.writer.loss_names,
-            *[m.name for m in self.metrics],
+            *[m.name for m in self.metrics["inference"]],
             writer=self.writer,
         )
 
@@ -156,7 +161,7 @@ class BaseTrainer:
 
             # print logged informations to the screen
             for key, value in log.items():
-                self.logger.info("    {:15s}: {}".format(str(key), value))
+                self.logger.info(f"    {key:15s}: {value}")
 
             # evaluate model performance according to configured metric,
             # save best checkpoint as model_best
@@ -185,8 +190,8 @@ class BaseTrainer:
                     improved = False
             except KeyError:
                 self.logger.warning(
-                    "Warning: Metric '{}' is not found. "
-                    "Model performance monitoring is disabled.".format(self.mnt_metric)
+                    f"Warning: Metric '{self.mnt_metric}' is not found. "
+                    "Model performance monitoring is disabled."
                 )
                 self.mnt_mode = "off"
                 improved = False
@@ -260,6 +265,10 @@ class BaseTrainer:
         for metric_name in metric_tracker.keys():
             self.writer.add_scalar(f"{metric_name}", metric_tracker.avg(metric_name))
     
+    def _log_eer_tdcf(self, eer, min_tdcf):
+        self.writer.add_scalar("eer", eer)
+        self.writer.add_scalar("min_tDCF", min_tdcf)
+    
     def _log_eer(self, all_probs, all_targets):
         eer, thr = compute_eer(
             all_probs[all_targets == 0],
@@ -268,16 +277,6 @@ class BaseTrainer:
         self.writer.add_scalar("eer", eer)
         self.writer.add_scalar("eer_thr", thr)
         return eer
-        # other_eer, other_thr = compute_eer(
-        #     -all_probs[all_targets == 0],
-        #     -all_probs[all_targets == 1]
-        # )
-        # if eer < other_eer:
-            # self.writer.add_scalar("eer", eer)
-            # self.writer.add_scalar("eer_thr", thr)
-        # else:
-        #     self.writer.add_scalar("eer", other_eer)
-        #     self.writer.add_scalar("eer_thr", other_thr)
 
     def _save_checkpoint(self, epoch, save_best=False, only_best=False):
         """
@@ -299,10 +298,10 @@ class BaseTrainer:
             "monitor_best": self.mnt_best,
             "config": self.config,
         }
-        filename = str(self.checkpoint_dir / "checkpoint-epoch{}.pth".format(epoch))
+        filename = str(self.checkpoint_dir / f"checkpoint-epoch{epoch}.pth")
         if not (only_best and save_best):
             torch.save(state, filename)
-            self.logger.info("Saving checkpoint: {} ...".format(filename))
+            self.logger.info(f"Saving checkpoint: {filename} ...")
         if save_best:
             best_path = str(self.checkpoint_dir / "model_best.pth")
             torch.save(state, best_path)
@@ -315,7 +314,7 @@ class BaseTrainer:
         :param resume_path: Checkpoint path to be resumed
         """
         resume_path = str(resume_path)
-        self.logger.info("Loading checkpoint: {} ...".format(resume_path))
+        self.logger.info(f"Loading checkpoint: {resume_path} ...")
         checkpoint = torch.load(resume_path, self.device)
         self.start_epoch = checkpoint["epoch"] + 1
         self.mnt_best = checkpoint["monitor_best"]
@@ -355,7 +354,7 @@ class BaseTrainer:
             # self.lr_scheduler.load_state_dict(checkpoint["lr_scheduler"])
 
         self.logger.info(
-            "Checkpoint loaded. Resume training from epoch {}".format(self.start_epoch)
+            f"Checkpoint loaded. Resume training from epoch {self.start_epoch}"
         )
 
     def _from_pretrained(self, pretrained_path):
@@ -365,7 +364,7 @@ class BaseTrainer:
         :param pretrained_path: path to model state dict
         """
         pretrained_path = str(pretrained_path)
-        self.logger.info("Loading model weights from: {} ...".format(pretrained_path))
+        self.logger.info(f"Loading model weights from: {pretrained_path} ...")
         checkpoint = torch.load(pretrained_path, self.device)
 
         if checkpoint.get("state_dict") is not None:

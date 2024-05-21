@@ -13,6 +13,8 @@ from src.trainer import Trainer
 from src.utils.data_utils import get_dataloaders
 from src.utils.init_utils import setup_saving_and_logging
 
+from src.baseline.eval_package.main import evaluation_API
+
 warnings.filterwarnings("ignore", category=UserWarning)
 
 
@@ -53,7 +55,7 @@ def generate_score_file(model, loss, dataloader, score_file_name, config):
                 batch = move_batch_to_device(batch, config)
                 batch = transform_batch(batch)
 
-                feats, audio_outputs = model.audio_model(batch["audio"])
+                feats, audio_outputs = model.audio_model(batch["audio"].squeeze(1))
                 _, batch["score"] = loss.audio_loss(feats, batch["gt_label"])
 
                 # print("SCORE:", batch["score"].shape)
@@ -63,7 +65,7 @@ def generate_score_file(model, loss, dataloader, score_file_name, config):
                     print(f"LA_E_{batch['audio_file_name'][i]} {batch['score'][i]}", file=cm_score_file)
 
 
-@hydra.main(version_base=None, config_path="src/configs", config_name="resnet_initial_params")
+@hydra.main(version_base=None, config_path="src/configs", config_name="rawnet_high_params")
 def main(config):
     global batch_transforms, device
 
@@ -83,10 +85,13 @@ def main(config):
     loss = instantiate(config.loss).to(device)
 
     # build model architecture, then print to console
-    model = instantiate(config.model).to(device)
+    model = instantiate(config.model, device=device).to(device)
     checkpoint_path = config.test.checkpoint_path
     checkpoint_name = config.test.checkpoint_name
     checkpoint = torch.load(checkpoint_path + checkpoint_name, device)
+
+    print("2021")
+    print(checkpoint_path + checkpoint_name)
 
     if checkpoint.get("state_dict") is not None:
         model.load_state_dict(checkpoint["state_dict"])
@@ -102,8 +107,13 @@ def main(config):
 
     generate_score_file(model, loss, evaluation_dataloader, cm_score_file_name, config)
 
-    subprocess.run(["python", "2021/eval-package/main.py", "--cm-score-file", cm_score_file_name,
-                    "--track", "LA", "--subset", "eval", "--metadata", "2021/eval-package/keys/"])
+    min_tdcfs, eers = evaluation_API(
+        cm_score_file_name,
+        "LA", 
+        "eval", 
+        "baseline/eval_package/keys/")
+    min_tdcf, eer = min_tdcfs[-1][-1], eers[-1][-1]
+    print(min_tdcf, eer)
 
 
 if __name__ == "__main__":

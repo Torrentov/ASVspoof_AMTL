@@ -1,0 +1,5 @@
+project_name: "asvspoof_amtl"
+entity: null
+run_name: "RawNet_spec_readme_params_opt_rawnet"
+mode: "online"
+loss_names: ["ocsoftmax"] # which losses to log (useful for multi-loss tasks, s.a. GANs)
